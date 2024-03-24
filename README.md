@@ -9,8 +9,4 @@ This repository hosts code designed for colorization tasks using Convolutional N
 
 Download the dataset zip file from the following link: https://drive.google.com/file/d/15jprd8VTdtIQeEtQj6wbRx6seM8j0Rx5/view?usp=sharing and unzip it to a location outside the current directory. 
 
-## Requirements
 
-It's advised to utilize a virtual environment for the project to handle the dependencies efficiently. You can install these dependencies by executing the command below:
-
-`pip install torch numpy matplotlib scikit-image torchvision opencv-python`
