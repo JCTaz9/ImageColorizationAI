@@ -1,3 +1,4 @@
+from PIL import Image
 import torchvision.transforms as T
 import torch
 import numpy as np
@@ -6,25 +7,39 @@ from torchvision import datasets
 
 class EnhancedColorizeDataset(datasets.ImageFolder):
     def __getitem__(self, index):
-        # Retrieve the image path and ignore its label using the provided index
         image_path, _ = self.imgs[index]
-        # Load the image from the path
-        loaded_image = self.loader(image_path)
-        # Apply predefined transformations to the image
+        loaded_image = Image.open(image_path)
+
+        # Convert palette images with transparency to RGBA and then to RGB
+        if loaded_image.mode == 'P' or loaded_image.mode == 'RGBA':
+            loaded_image = loaded_image.convert('RGBA').convert('RGB')
+
+        # Convert PIL Image to NumPy array to check channels
+        image_np = np.array(loaded_image)
+
+        # Skip the image if it's grayscale
+        if image_np.ndim == 2 or (image_np.ndim == 3 and image_np.shape[2] == 1):
+            return None  # Return None or use another strategy such as loading a different image
+
+        # Apply transformations
         transformed_image = self.transform(loaded_image)
-        # Convert the transformed image into a numpy array
-        transformed_image_array = np.asarray(transformed_image)
-        # Change the color space of the image from RGB to LAB
+
+        # Ensure transformed image is in the correct format for LAB conversion
+        transformed_image_array = np.array(transformed_image)
+        if transformed_image_array.ndim == 2:  # Check if the image is still grayscale after transformation
+            transformed_image_array = np.stack([transformed_image_array] * 3, axis=-1)
+
+        # Correctly transpose the array from (C, H, W) to (H, W, C) for rgb2lab
+        transformed_image_array = transformed_image_array.transpose((1, 2, 0))
+
+        # Convert image to LAB and normalize
         image_lab = rgb2lab(transformed_image_array)
-        # Scale LAB values to a range between 0 and 1
         image_lab_normalized = (image_lab + 128) / 255
-        # Extract the A and B color channels
         image_ab_channels = image_lab_normalized[:, :, 1:3]
-        # Convert A and B channels into a torch tensor
         image_ab_channels_tensor = torch.from_numpy(image_ab_channels.transpose((2, 0, 1))).float()
-        # Convert the original image to grayscale
+
+        # Convert image to grayscale for the L channel
         grayscale_image = rgb2gray(transformed_image_array)
-        # Transform grayscale image to a torch tensor and add an extra dimension
         grayscale_image_tensor = torch.from_numpy(grayscale_image).unsqueeze(0).float()
-        # Return the grayscale and AB channel images
+
         return grayscale_image_tensor, image_ab_channels_tensor
