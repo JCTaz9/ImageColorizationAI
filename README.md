@@ -7,6 +7,8 @@ This repository hosts code designed for colorization tasks using Convolutional N
 
 ## Dataset
 
-Download the dataset zip file from the following link: https://drive.google.com/file/d/15jprd8VTdtIQeEtQj6wbRx6seM8j0Rx5/view?usp=sharing and unzip it to a location outside the current directory. 
+Download the dataset zip file from the following link: https://www.kaggle.com/datasets/ashwingupta3012/male-and-female-faces-dataset and unzip it to a location outside the current directory. 
+
+
 
 
