@@ -13,10 +13,17 @@ import glob
 from torch.utils.data import Dataset, DataLoader
 from torchvision.io import read_image
 from torchvision import transforms
+from torch.utils.data.dataloader import default_collate
 from pathlib import Path
 
 # Define device based on CUDA availability
+
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+def custom_collate(batch):
+    batch = [b for b in batch if b is not None]
+    if len(batch) == 0:
+        return None  # Handle the case where the entire batch is None
+    return default_collate(batch)
 
 # Utility for measuring and tracking metrics
 class AverageMeter(object):
@@ -57,7 +64,15 @@ class Trainer:
     # Train the model for one epoch
     def train(self, train_loader, epoch, model, criterion, optimizer, scheduler):
       print('Starting training for epoch {}'.format(epoch+1))
+
       model.train()
+      for i, batch in enumerate(train_loader):
+        if batch is None:
+            continue  # Skip the iteration if the batch data is None
+        
+        input_gray, input_ab = batch
+
+
       batch_time, data_time, losses = AverageMeter(), AverageMeter(), AverageMeter()
       end = time.time()
 
@@ -138,10 +153,9 @@ class Trainer:
 
 if __name__ == "__main__":
     # Initialize default parameters for the training setup
-    image_dir = 'train_landscape_images/landscape_images'
+    image_dir = 'dataset'
     n_val = 100
-    epochs = 10
-    save_images = True
+    epochs = 100
     lr = 1e-3
     weight_decay = 1e-4
     save_model = True
@@ -161,12 +175,17 @@ if __name__ == "__main__":
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.5)
 
     # Prepare datasets and data loaders
-    all_transforms = T.Compose([T.Resize(256), T.CenterCrop(224)])
+    all_transforms = T.Compose([
+        T.Resize((256, 256)),  # Consider aspect ratio if necessary
+        T.RandomHorizontalFlip(),
+        T.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2),
+        T.ToTensor()  
+    ])
     all_imagefolder = EnhancedColorizeDataset(image_dir, all_transforms)
     train_size = int(0.9 * len(all_imagefolder))
     val_size = len(all_imagefolder) - train_size
     train_dataset, val_dataset = torch.utils.data.random_split(all_imagefolder, [train_size, val_size])
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, collate_fn=custom_collate)
     val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
 
     # Execute training and validation cycles
@@ -174,11 +193,13 @@ if __name__ == "__main__":
         Trainer().train(train_loader, epoch, model, criterion, optimizer, scheduler)
         scheduler.step()
         with torch.no_grad():
-            Trainer().validate(val_loader, epoch, save_images, model, criterion)
+            Trainer().validate(val_loader, epoch, False, model, criterion)
 
     # Optionally save the trained model
     if save_model:
-        models_directory = 'models'
+        models_directory = 'saved_models'
         os.makedirs(models_directory, exist_ok=True)
-        model_save_path = os.path.join(models_directory, 'saved_model.pth')
+        model_save_path = os.path.join(models_directory, 'model_human.pth')
         torch.save(model, model_save_path)
+
+
