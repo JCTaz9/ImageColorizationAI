@@ -155,7 +155,7 @@ if __name__ == "__main__":
     # Initialize default parameters for the training setup
     image_dir = 'dataset'
     n_val = 100
-    epochs = 100
+    epochs = 85
     lr = 1e-3
     weight_decay = 1e-4
     save_model = True
